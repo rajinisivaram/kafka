@@ -62,7 +62,7 @@ object RequestChannel extends Logging {
     @volatile var responseDequeueTimeNanos = -1L
     @volatile var apiRemoteCompleteTimeNanos = -1L
     @volatile var messageConversionsTimeNanos = 0L
-    @volatile var temporaryMemorySize = 0L
+    @volatile var temporaryMemoryBytes = 0L
     @volatile var recordNetworkThreadTimeCallback: Option[Long => Unit] = None
 
     val session = Session(context.principal, context.clientAddress)
@@ -146,9 +146,9 @@ object RequestChannel extends Logging {
         m.responseQueueTimeHist.update(Math.round(responseQueueTimeMs))
         m.responseSendTimeHist.update(Math.round(responseSendTimeMs))
         m.totalTimeHist.update(Math.round(totalTimeMs))
-        m.requestSizeHist.update(sizeOfBodyInBytes)
+        m.requestBytesHist.update(sizeOfBodyInBytes)
         m.messageConversionsTimeHist.foreach(_.update(Math.round(messageConversionsTimeMs)))
-        m.tempMemorySizeHist.foreach(_.update(temporaryMemorySize))
+        m.tempMemoryBytesHist.foreach(_.update(temporaryMemoryBytes))
       }
 
       // Records network handler thread usage. This is included towards the request quota for the
@@ -178,8 +178,8 @@ object RequestChannel extends Logging {
           .append(",securityProtocol:").append(context.securityProtocol)
           .append(",principal:").append(session.principal)
           .append(",listener:").append(context.listenerName.value)
-        if (temporaryMemorySize > 0)
-          builder.append(",temporaryMemorySize:").append(temporaryMemorySize)
+        if (temporaryMemoryBytes > 0)
+          builder.append(",temporaryMemoryBytes:").append(temporaryMemoryBytes)
         if (messageConversionsTimeMs > 0)
           builder.append(",messageConversionsTime:").append(messageConversionsTimeMs)
         requestLogger.debug(builder.toString)
@@ -329,7 +329,7 @@ class RequestMetrics(name: String) extends KafkaMetricsGroup {
   val responseSendTimeHist = newHistogram("ResponseSendTimeMs", biased = true, tags)
   val totalTimeHist = newHistogram("TotalTimeMs", biased = true, tags)
   // request size in bytes
-  val requestSizeHist = newHistogram("RequestSize", biased = true, tags)
+  val requestBytesHist = newHistogram("RequestBytes", biased = true, tags)
   // time for message conversions (only relevant to fetch and produce requests)
   val messageConversionsTimeHist =
     if (name == ApiKeys.FETCH.name || name == ApiKeys.PRODUCE.name)
@@ -337,9 +337,9 @@ class RequestMetrics(name: String) extends KafkaMetricsGroup {
     else
       None
   // temporary memory allocated for processing request (only populated for fetch and produce requests)
-  val tempMemorySizeHist =
+  val tempMemoryBytesHist =
     if (name == ApiKeys.FETCH.name || name == ApiKeys.PRODUCE.name)
-      Some(newHistogram("TemporaryMemorySize", biased = true, tags))
+      Some(newHistogram("TemporaryMemoryBytes", biased = true, tags))
     else
       None
 
