@@ -178,10 +178,10 @@ object RequestChannel extends Logging {
           .append(",securityProtocol:").append(context.securityProtocol)
           .append(",principal:").append(session.principal)
           .append(",listener:").append(context.listenerName.value)
-        if (messageConversionsTimeMs > 0)
-          builder.append(",messageConversionsTime:").append(messageConversionsTimeMs)
         if (temporaryMemorySize > 0)
           builder.append(",temporaryMemorySize:").append(temporaryMemorySize)
+        if (messageConversionsTimeMs > 0)
+          builder.append(",messageConversionsTime:").append(messageConversionsTimeMs)
         requestLogger.debug(builder.toString)
       }
     }
@@ -287,8 +287,7 @@ class RequestChannel(val numProcessors: Int, val queueSize: Int) extends KafkaMe
 
   def updateErrorMetrics(apiKey: ApiKeys, errors: scala.collection.Map[Errors, Integer]) {
     errors.foreach { case (error, count) =>
-      val errorMeter = RequestMetrics.metricsMap(apiKey.name).errorMeters(error)
-      errorMeter.getOrCreateMeter().mark(count.toLong)
+      RequestMetrics.markErrorMeter(apiKey.name, error, count)
     }
   }
 
@@ -306,6 +305,11 @@ object RequestMetrics {
   val followFetchMetricName = ApiKeys.FETCH.name + "Follower"
   (ApiKeys.values().toList.map(e => e.name)
     ++ List(consumerFetchMetricName, followFetchMetricName)).foreach(name => metricsMap.put(name, new RequestMetrics(name)))
+
+  def markErrorMeter(name: String, error: Errors, count: Int) {
+      val errorMeter = metricsMap(name).errorMeters(error)
+      errorMeter.getOrCreateMeter().mark(count.toLong)
+  }
 }
 
 class RequestMetrics(name: String) extends KafkaMetricsGroup {
@@ -340,14 +344,14 @@ class RequestMetrics(name: String) extends KafkaMetricsGroup {
       None
 
   val errorMeters = new scala.collection.mutable.HashMap[Errors, ErrorMeter]
-  Errors.values.toList.foreach(error => errorMeters.put(error, new ErrorMeter(name, error)))
+  Errors.values.foreach(error => errorMeters.put(error, new ErrorMeter(name, error)))
 
   class ErrorMeter(name: String, error: Errors) {
     val tags = Map("request" -> name, "error" -> error.name)
     @volatile var meter: Meter = null
     def getOrCreateMeter(): Meter = {
       if (meter != null)
-        return meter
+        meter
       else {
         synchronized {
           if (meter == null)
@@ -357,6 +361,7 @@ class RequestMetrics(name: String) extends KafkaMetricsGroup {
       }
     }
 
+    // This is currently used only in tests.
     def removeMeter(): Unit = {
       synchronized {
         if (meter != null) {
