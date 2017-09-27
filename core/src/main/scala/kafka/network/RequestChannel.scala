@@ -23,7 +23,7 @@ import java.util.concurrent._
 
 import com.yammer.metrics.core.{Gauge, Meter}
 import kafka.metrics.KafkaMetricsGroup
-import kafka.network.RequestChannel.{ShutdownRequest, BaseRequest}
+import kafka.network.RequestChannel.{BaseRequest, ShutdownRequest}
 import kafka.server.QuotaId
 import kafka.utils.{Logging, NotNothing}
 import org.apache.kafka.common.memory.MemoryPool
@@ -35,6 +35,7 @@ import org.apache.kafka.common.security.auth.KafkaPrincipal
 import org.apache.kafka.common.utils.Time
 import org.apache.log4j.Logger
 
+import scala.collection.mutable
 import scala.reflect.ClassTag
 
 object RequestChannel extends Logging {
@@ -300,11 +301,12 @@ class RequestChannel(val numProcessors: Int, val queueSize: Int) extends KafkaMe
 }
 
 object RequestMetrics {
-  val metricsMap = new scala.collection.mutable.HashMap[String, RequestMetrics]
+  val metricsMap = mutable.Map[String, RequestMetrics]()
   val consumerFetchMetricName = ApiKeys.FETCH.name + "Consumer"
   val followFetchMetricName = ApiKeys.FETCH.name + "Follower"
-  (ApiKeys.values().toList.map(e => e.name)
-    ++ List(consumerFetchMetricName, followFetchMetricName)).foreach(name => metricsMap.put(name, new RequestMetrics(name)))
+  (ApiKeys.values.toSeq.map(_.name) ++ Seq(consumerFetchMetricName, followFetchMetricName)).foreach { name =>
+    metricsMap.put(name, new RequestMetrics(name))
+  }
 
   def markErrorMeter(name: String, error: Errors, count: Int) {
       val errorMeter = metricsMap(name).errorMeters(error)
@@ -343,12 +345,14 @@ class RequestMetrics(name: String) extends KafkaMetricsGroup {
     else
       None
 
-  val errorMeters = new scala.collection.mutable.HashMap[Errors, ErrorMeter]
+  val errorMeters = mutable.Map[Errors, ErrorMeter]()
   Errors.values.foreach(error => errorMeters.put(error, new ErrorMeter(name, error)))
 
   class ErrorMeter(name: String, error: Errors) {
-    val tags = Map("request" -> name, "error" -> error.name)
-    @volatile var meter: Meter = null
+    private val tags = Map("request" -> name, "error" -> error.name)
+
+    @volatile private var meter: Meter = null
+
     def getOrCreateMeter(): Meter = {
       if (meter != null)
         meter
@@ -370,5 +374,6 @@ class RequestMetrics(name: String) extends KafkaMetricsGroup {
         }
       }
     }
+
   }
 }
