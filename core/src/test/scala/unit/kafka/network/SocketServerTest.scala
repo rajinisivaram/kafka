@@ -599,8 +599,7 @@ class SocketServerTest {
     proxyServer.enableBuffering(netReadBuffer)
     (1 to numBufferedRequests).foreach { _ => sendRequest(socket, requestBytes) }
 
-    val keysWithBufferedRead: util.Set[SelectionKey] = JTestUtils.fieldValue(serverSelector, classOf[Selector], "keysWithBufferedRead")
-    keysWithBufferedRead.add(channel.selectionKey)
+    keysWithBufferedRead(serverSelector).add(channel.selectionKey)
     JTestUtils.setFieldValue(transportLayer, "hasBytesBuffered", true)
 
     (socket, request1)
@@ -1630,8 +1629,7 @@ class SocketServerTest {
       val (socket, request) = makeSocketWithBufferedRequests(testableServer, testableSelector, proxyServer)
       testableSelector.operationCounts.clear()
       testableSelector.waitForOperations(SelectorOperation.Poll, 1)
-      val keysWithBufferedRead: util.Set[SelectionKey] = JTestUtils.fieldValue(testableSelector, classOf[Selector], "keysWithBufferedRead")
-      assertEquals(Set.empty, keysWithBufferedRead.asScala)
+      TestUtils.waitUntilTrue(() => keysWithBufferedRead(testableSelector).isEmpty, "Selection key not removed from buffered list")
       processRequest(testableServer.dataPlaneRequestChannel, request)
       // buffered requests should be processed after channel is unmuted
       receiveRequest(testableServer.dataPlaneRequestChannel)
@@ -1956,6 +1954,9 @@ class SocketServerTest {
   // Since all sockets use the same local host, it is sufficient to check the local port
   def isSocketConnectionId(connectionId: String, socket: Socket): Boolean =
     connectionId.contains(s":${socket.getLocalPort}-")
+
+  private def keysWithBufferedRead(selector: Selector): util.Set[SelectionKey] =
+    JTestUtils.fieldValue(selector, classOf[Selector], "keysWithBufferedRead")
 
   private def verifyAcceptorBlockedPercent(listenerName: String, expectBlocked: Boolean): Unit = {
     val blockedPercentMetricMBeanName = "kafka.network:type=Acceptor,name=AcceptorBlockedPercent,listener=PLAINTEXT"
