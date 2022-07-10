@@ -20,6 +20,7 @@ import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.Config;
 import org.apache.kafka.clients.admin.DescribeConfigsResult;
+import org.apache.kafka.clients.admin.ListConsumerGroupOffsetsOptions;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -398,7 +399,7 @@ public class MirrorConnectorsIntegrationBaseTest {
         try (Admin backupClient = backup.kafka().createAdminClient()) {
             // retrieve the consumer group offset from backup cluster
             Map<TopicPartition, OffsetAndMetadata> remoteOffsets =
-                backupClient.listConsumerGroupOffsets(Collections.singletonList(consumerGroupName))
+                backupClient.listConsumerGroupOffsets(Collections.singletonMap(consumerGroupName, ListConsumerGroupOffsetsOptions.ALL_TOPIC_PARTITIONS))
                     .groupIdsToPartitionsAndOffsetAndMetadata()
                     .get(consumerGroupName)
                     .get();
@@ -713,7 +714,7 @@ public class MirrorConnectorsIntegrationBaseTest {
 
             waitForCondition(() -> {
                 Map<TopicPartition, OffsetAndMetadata> consumerGroupOffsets =
-                    adminClient.listConsumerGroupOffsets(Collections.singletonList(consumerGroupId))
+                    adminClient.listConsumerGroupOffsets(Collections.singletonMap(consumerGroupId, ListConsumerGroupOffsetsOptions.ALL_TOPIC_PARTITIONS))
                         .groupIdsToPartitionsAndOffsetAndMetadata()
                         .get(consumerGroupId)
                         .get();

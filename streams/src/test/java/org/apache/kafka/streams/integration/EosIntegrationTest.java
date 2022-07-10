@@ -18,6 +18,7 @@ package org.apache.kafka.streams.integration;
 
 import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.ListConsumerGroupOffsetsOptions;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -197,7 +198,7 @@ public class EosIntegrationTest {
             final Collection<TopicPartition> topicPartitions = Collections.singleton(topicPartition);
 
             final long committedOffset =
-                adminClient.listConsumerGroupOffsets(Collections.singletonList(applicationId))
+                adminClient.listConsumerGroupOffsets(Collections.singletonMap(applicationId, ListConsumerGroupOffsetsOptions.ALL_TOPIC_PARTITIONS))
                     .groupIdsToPartitionsAndOffsetAndMetadata()
                     .get(applicationId)
                     .get()

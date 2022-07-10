@@ -18,6 +18,7 @@ package org.apache.kafka.connect.mirror;
 
 import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.ConsumerGroupDescription;
+import org.apache.kafka.clients.admin.ListConsumerGroupOffsetsOptions;
 import org.apache.kafka.common.ConsumerGroupState;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.connect.source.SourceTask;
@@ -184,7 +185,7 @@ public class MirrorCheckpointTask extends SourceTask {
             return Collections.emptyMap();
         }
         return sourceAdminClient
-            .listConsumerGroupOffsets(Collections.singletonList(group))
+            .listConsumerGroupOffsets(Collections.singletonMap(group, ListConsumerGroupOffsetsOptions.ALL_TOPIC_PARTITIONS))
             .groupIdsToPartitionsAndOffsetAndMetadata()
             .get(group)
             .get();
@@ -246,13 +247,10 @@ public class MirrorCheckpointTask extends SourceTask {
                 // (1) idle: because the consumer at target is not actively consuming the mirrored topic
                 // (2) dead: the new consumer that is recently created at source and never existed at target
                 if (consumerGroupState == ConsumerGroupState.EMPTY) {
-                    idleConsumerGroupsOffset.put(group, targetAdminClient.listConsumerGroupOffsets(Collections.singletonList(group))
+                    idleConsumerGroupsOffset.put(group, targetAdminClient.listConsumerGroupOffsets(Collections.singletonMap(group, ListConsumerGroupOffsetsOptions.ALL_TOPIC_PARTITIONS))
                             .groupIdsToPartitionsAndOffsetAndMetadata()
                             .get(group)
-                            .get()
-                            .entrySet()
-                            .stream()
-                            .collect(Collectors.toMap(Entry::getKey, Entry::getValue)));
+                            .get());
                 }
                 // new consumer upstream has state "DEAD" and will be identified during the offset sync-up
             } catch (InterruptedException | ExecutionException e) {

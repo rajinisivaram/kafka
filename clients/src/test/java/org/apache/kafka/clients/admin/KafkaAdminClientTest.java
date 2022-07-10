@@ -260,7 +260,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 /**
  * A unit test for KafkaAdminClient.
  *
- * See AdtestListConsumerGroupOffsetsminClientIntegrationTest for an integration test.
+ * See AdminClientIntegrationTest for an integration test.
  */
 @Timeout(120)
 public class KafkaAdminClientTest {
@@ -269,7 +269,7 @@ public class KafkaAdminClientTest {
     private static final int THROTTLE = 10;
 
     @Test
-    public void testDefaultApiTimeoutAndReqtestListConsumerGroupOffsetsuestTimeoutConflicts() {
+    public void testDefaultApiTimeoutAndRequestTimeoutConflicts() {
         final AdminClientConfig config = newConfMap(AdminClientConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, "500");
         KafkaException exception = assertThrows(KafkaException.class,
             () -> KafkaAdminClient.createInternal(config, null));
@@ -3069,8 +3069,9 @@ public class KafkaAdminClientTest {
 
             final TopicPartition tp1 = new TopicPartition("A", 0);
             final ListConsumerGroupOffsetsOptions options = new ListConsumerGroupOffsetsOptions();
-            options.topicPartitions(Collections.singletonList(tp1)).requireStable(true);
-            final ListConsumerGroupOffsetsResult result = env.adminClient().listConsumerGroupOffsets(Collections.singletonList(GROUP_ID), options);
+            options.requireStable(true);
+            env.adminClient().listConsumerGroupOffsets(
+                    Collections.singletonMap(GROUP_ID, Collections.singletonList(tp1)), options);
 
             final MockClient mockClient = env.kafkaClient();
             TestUtils.waitForCondition(() -> {
@@ -3102,12 +3103,12 @@ public class KafkaAdminClientTest {
                 Collections.singletonMap(GROUP_ID, Collections.emptyMap())));
             env.kafkaClient().prepareResponse(prepareFindCoordinatorResponse(Errors.NONE, env.cluster().controller()));
 
-            final ListConsumerGroupOffsetsResult result =
-                env.adminClient().listConsumerGroupOffsets(Collections.singletonList(GROUP_ID));
+            final ListConsumerGroupOffsetsResult result = env.adminClient().listConsumerGroupOffsets(
+                    Collections.singletonMap(GROUP_ID, ListConsumerGroupOffsetsOptions.ALL_TOPIC_PARTITIONS));
 
 
-            TestUtils.assertFutureError(result.groupIdsToPartitionsAndOffsetAndMetadata()
-                .get(GROUP_ID), TimeoutException.class);
+            TestUtils.assertFutureError(result.groupIdsToPartitionsAndOffsetAndMetadata().get(GROUP_ID),
+                    TimeoutException.class);
         }
     }
 
@@ -3145,8 +3146,8 @@ public class KafkaAdminClientTest {
                 Collections.singletonMap(GROUP_ID, Errors.NONE),
                 Collections.singletonMap(GROUP_ID, Collections.emptyMap())));
 
-            final KafkaFuture<Map<TopicPartition, OffsetAndMetadata>> future =
-                env.adminClient().listConsumerGroupOffsets(Collections.singletonList(GROUP_ID))
+            final KafkaFuture<Map<TopicPartition, OffsetAndMetadata>> future = env.adminClient().listConsumerGroupOffsets(
+                    Collections.singletonMap(GROUP_ID, ListConsumerGroupOffsetsOptions.ALL_TOPIC_PARTITIONS))
                     .groupIdsToPartitionsAndOffsetAndMetadata()
                     .get(GROUP_ID);
 
@@ -3208,8 +3209,8 @@ public class KafkaAdminClientTest {
                     Collections.singletonMap(GROUP_ID, Errors.NONE),
                     Collections.singletonMap(GROUP_ID, Collections.emptyMap())));
 
-            final ListConsumerGroupOffsetsResult errorResult1 =
-                env.adminClient().listConsumerGroupOffsets(Collections.singletonList(GROUP_ID));
+            final ListConsumerGroupOffsetsResult errorResult1 = env.adminClient().listConsumerGroupOffsets(
+                    Collections.singletonMap(GROUP_ID, ListConsumerGroupOffsetsOptions.ALL_TOPIC_PARTITIONS));
 
             assertEquals(Collections.emptyMap(),
                 errorResult1.groupIdsToPartitionsAndOffsetAndMetadata()
@@ -3236,8 +3237,8 @@ public class KafkaAdminClientTest {
                         Collections.singletonMap(GROUP_ID, error),
                         Collections.singletonMap(GROUP_ID, Collections.emptyMap())));
 
-                ListConsumerGroupOffsetsResult errorResult =
-                    env.adminClient().listConsumerGroupOffsets(Collections.singletonList(GROUP_ID));
+                ListConsumerGroupOffsetsResult errorResult = env.adminClient().listConsumerGroupOffsets(
+                        Collections.singletonMap(GROUP_ID, ListConsumerGroupOffsetsOptions.ALL_TOPIC_PARTITIONS));
 
                 TestUtils.assertFutureError(errorResult.groupIdsToPartitionsAndOffsetAndMetadata()
                         .get(GROUP_ID),
@@ -3294,8 +3295,8 @@ public class KafkaAdminClientTest {
                 Collections.singletonMap(GROUP_ID, Errors.NONE),
                 Collections.singletonMap(GROUP_ID, responseData)));
 
-            final ListConsumerGroupOffsetsResult result =
-                env.adminClient().listConsumerGroupOffsets(Collections.singletonList(GROUP_ID));
+            final ListConsumerGroupOffsetsResult result = env.adminClient().listConsumerGroupOffsets(
+                    Collections.singletonMap(GROUP_ID, ListConsumerGroupOffsetsOptions.ALL_TOPIC_PARTITIONS));
             final Map<TopicPartition, OffsetAndMetadata> partitionToOffsetAndMetadata = result
                 .groupIdsToPartitionsAndOffsetAndMetadata()
                 .get(GROUP_ID).get();

@@ -17,6 +17,7 @@
 package org.apache.kafka.connect.mirror.integration;
 
 import org.apache.kafka.clients.admin.Admin;
+import org.apache.kafka.clients.admin.ListConsumerGroupOffsetsOptions;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
@@ -183,7 +184,7 @@ public class IdentityReplicationIntegrationTest extends MirrorConnectorsIntegrat
             // retrieve the consumer group offset from backup cluster
             Map<TopicPartition, OffsetAndMetadata> remoteOffsets =
                 backupClient
-                    .listConsumerGroupOffsets(Collections.singletonList(consumerGroupName))
+                    .listConsumerGroupOffsets(Collections.singletonMap(consumerGroupName, ListConsumerGroupOffsetsOptions.ALL_TOPIC_PARTITIONS))
                     .groupIdsToPartitionsAndOffsetAndMetadata()
                     .get(consumerGroupName)
                     .get();

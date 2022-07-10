@@ -18,6 +18,7 @@ package org.apache.kafka.streams.tests;
 
 import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.ConsumerGroupDescription;
+import org.apache.kafka.clients.admin.ListConsumerGroupOffsetsOptions;
 import org.apache.kafka.clients.admin.ListConsumerGroupOffsetsResult;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -273,7 +274,7 @@ public class EosTestDriver extends SmokeTestUtil {
 
         try {
             final ListConsumerGroupOffsetsResult listConsumerGroupOffsetsResult =
-                adminClient.listConsumerGroupOffsets(Collections.singletonList(EosTestClient.APP_ID));
+                adminClient.listConsumerGroupOffsets(Collections.singletonMap(EosTestClient.APP_ID, ListConsumerGroupOffsetsOptions.ALL_TOPIC_PARTITIONS));
             topicPartitionOffsetAndMetadataMap =
                 listConsumerGroupOffsetsResult.groupIdsToPartitionsAndOffsetAndMetadata()
                     .get(EosTestClient.APP_ID)
